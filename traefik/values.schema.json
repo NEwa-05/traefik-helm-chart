@@ -359,6 +359,9 @@
                                 "customWebhookCertificate": {
                                     "type": "object"
                                 },
+                                "existingSecretName": {
+                                    "type": "string"
+                                },
                                 "listenAddr": {
                                     "type": "string"
                                 },

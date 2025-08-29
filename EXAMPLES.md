@@ -1154,7 +1154,8 @@ First, generate a self-signed certificate:
 ```bash
 # this generates a self-signed certificate with a 2048 bits key, valid for 10 years, on admission.traefik.svc DNS name
 openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes -keyout /tmp/hub.key -out /tmp/hub.crt \
-            -subj "/CN=admission.traefik.svc" -addext "subjectAltName=DNS:admission.traefik.svc"
+            -subj '/CN=admission.traefik.svc' -addext "subjectAltName=DNS:admission.traefik.svc" \
+            -addext basicConstraints=critical,CA:FALSE -addext "keyUsage = digitalSignature, keyEncipherment" -addext "extendedKeyUsage = serverAuth, clientAuth"
 cat /tmp/hub.crt | base64 -w0 > /tmp/hub.crt.b64
 cat /tmp/hub.key | base64 -w0 > /tmp/hub.key.b64
 ```
@@ -1177,6 +1178,35 @@ hub:
 > --set 'hub.apimanagement.admission.customWebhookCertificate.tls\.crt'=$(cat /tmp/hub.crt.b64)
 > --set 'hub.apimanagement.admission.customWebhookCertificate.tls\.key'=$(cat /tmp/hub.key.b64)
 >```
+
+## Use a custom certificate for Traefik Hub webhooks from an existing secret
+
+Some CD tools may regenerate Traefik Hub mutating webhooks continuously, when using helm template.
+This example demonstrates how to generate and use a custom certificate stored in a managed secret for Hub admission webhooks.
+
+First, generate a self-signed certificate:
+
+```bash
+# this generates a self-signed certificate with a 2048 bits key, valid for 10 years, on admission.traefik.svc DNS name
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes -keyout tls.key -out tls.crt \
+            -subj '/CN=admission.traefik.svc' -addext "subjectAltName=DNS:admission.traefik.svc" \
+            -addext basicConstraints=critical,CA:FALSE -addext "keyUsage = digitalSignature, keyEncipherment" -addext "extendedKeyUsage = serverAuth, clientAuth"
+```
+
+Create secret from generated certificate files:
+
+```bash
+kubectl create secret tls hub-admission-cert --namespace traefik --cert=tls.crt --key=tls.key
+```
+
+Now, it can be set in the `values.yaml`:
+
+```yaml
+hub:
+  apimanagement:
+    admission:
+      existingSecretName: hub-admission-cert
+```
 
 ## Mount datadog DSD socket directly into traefik container (i.e. no more socat sidecar)
 
